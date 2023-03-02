@@ -1,11 +1,29 @@
 import 'package:cumt_login_demo/login.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_picker/Picker.dart';
+import 'package:provider/provider.dart';
+
+import 'login_provider.dart';
 
 main() {
-  runApp(MaterialApp(
-    home: LoginPage(),
-  ));
+  runApp(const MyApp());
 }
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (BuildContext context) => LoginPageProvider(),
+      child: MaterialApp(
+        home: LoginPage(),
+      ),
+    );
+  }
+}
+
+
 
 class LoginPage extends StatefulWidget {
   LoginPage({Key? key}) : super(key: key);
@@ -19,13 +37,11 @@ class _LoginPageState extends State<LoginPage> {
 
   final TextEditingController _passwordController = TextEditingController();
 
-  CumtLoginMethod loginMethod = CumtLoginMethod.cumt;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cumt校园网登录'),
+        title: const Text('CUMT校园网登录'),
       ),
       body: Center(
         child: Padding(
@@ -33,15 +49,16 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              buildDropdownButton(),
               const SizedBox(height: 16.0),
               buildTextField("账号", _usernameController),
               const SizedBox(height: 16.0),
-              buildTextField("密码", _passwordController,obscureText: true),
+              buildTextField("密码", _passwordController, obscureText: true),
               const SizedBox(height: 16.0),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
+                  buildPicker(),
+
                   ElevatedButton(
                     onPressed: () => _handleLogin(context),
                     child: const Text('登录'),
@@ -58,9 +75,23 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+  Widget buildPicker(){
+    return TextButton(onPressed: ()=> _showLocationMethodPicker(), child: Row(
+      children: [
+        Consumer<LoginPageProvider>(
+          builder: (context, provider, child) {
+            return Text(
+                "${provider.loginLocation.name} ${provider.loginMethod.name}");
+          },
+        ),
+        const Icon(Icons.arrow_drop_down),
+      ],
+    ));
+  }
 
   TextField buildTextField(
-      String labelText, TextEditingController textEditingController,{obscureText = false}) {
+      String labelText, TextEditingController textEditingController,
+      {obscureText = false}) {
     return TextField(
       controller: textEditingController,
       obscureText: obscureText,
@@ -71,37 +102,14 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  DropdownButton<String> buildDropdownButton() {
-    return DropdownButton<String>(
-      value: loginMethod.name,
-      // Default value
-      icon: const Icon(Icons.arrow_drop_down),
-      iconSize: 24,
-      elevation: 16,
-      style: const TextStyle(color: Colors.black),
-      onChanged: (String? newValue) {
-        setState(() {
-          loginMethod = CumtLoginMethod.values
-              .firstWhere((element) => element.name == newValue);
-        });
-      },
-      items: CumtLoginMethod.values
-          .map<DropdownMenuItem<String>>((CumtLoginMethod value) {
-        return DropdownMenuItem<String>(
-          value: value.name,
-          child: Text(value.name),
-        );
-      }).toList(),
-    );
-  }
-  
   void _handleLogout(BuildContext context) {
-    CumtLogin.logout().then((value) {
-      showSnackBar(context, value);
+    final loginLocation = Provider.of<LoginPageProvider>(context, listen: false).loginLocation;
+    CumtLogin.logout(loginLocation: loginLocation).then((value) {
+      _showSnackBar(context, value);
     });
   }
 
-  void showSnackBar(BuildContext context,String text) {
+  void _showSnackBar(BuildContext context, String text) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text),
@@ -110,18 +118,41 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _showLocationMethodPicker(){
+    Picker(
+        adapter: PickerDataAdapter<dynamic>(pickerData: [
+          CumtLoginLocationExtension.nameList,
+          CumtLoginMethodExtension.nameList,
+        ], isArray: true),
+        changeToFirst: true,
+        hideHeader: false,
+        onConfirm: (Picker picker, List value) {
+          final loginMethod = CumtLoginMethodExtension
+              .fromName(picker.getSelectedValues()[1]);
+          final loginLocation = CumtLoginLocationExtension.fromName(
+              picker.getSelectedValues()[0]);
+          Provider.of<LoginPageProvider>(context, listen: false)
+              .setMethodLocation(loginMethod, loginLocation);
+        }).showModal(context);
+  }
 
   void _handleLogin(BuildContext context) {
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text.trim();
+    final loginLocation = Provider.of<LoginPageProvider>(context, listen: false).loginLocation;
+    final loginMethod = Provider.of<LoginPageProvider>(context, listen: false).loginMethod;
     if (username.isEmpty || password.isEmpty) {
-      showSnackBar(context, '账号或密码不能为空');
+      _showSnackBar(context, '账号或密码不能为空');
       return;
     }
+
     CumtLogin.login(
-            username: username, password: password, loginMethod: loginMethod)
+            username: username,
+            password: password,
+            loginMethod: loginMethod,
+            loginLocation:loginLocation)
         .then((value) {
-          showSnackBar(context, value);
+      _showSnackBar(context, value);
     });
   }
 }
