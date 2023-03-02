@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cumt_login_demo/prefs.dart';
 import 'package:dio/dio.dart';
 
 enum CumtLoginLocation {
@@ -38,12 +39,15 @@ extension CumtLoginLocationExtension on CumtLoginLocation {
         return '文昌';
     }
   }
-  static List<String> get nameList{
+
+  static List<String> get nameList {
     return CumtLoginLocation.values.map((e) => e.name).toList(growable: false);
   }
+
   //根据name获取枚举
-  static CumtLoginLocation fromName(String name){
-    return CumtLoginLocation.values.firstWhere((element) => element.name == name);
+  static CumtLoginLocation fromName(String name) {
+    return CumtLoginLocation.values
+        .firstWhere((element) => element.name == name);
   }
 }
 
@@ -85,16 +89,19 @@ extension CumtLoginMethodExtension on CumtLoginMethod {
         return '移动';
     }
   }
-  static List<String> get nameList{
+
+  static List<String> get nameList {
     return CumtLoginMethod.values.map((e) => e.name).toList(growable: false);
   }
+
   //根据name获取枚举
-  static CumtLoginMethod fromName(String name){
+  static CumtLoginMethod fromName(String name) {
     return CumtLoginMethod.values.firstWhere((element) => element.name == name);
   }
 }
 
 class CumtLogin {
+
   static Future<String> logout(
       {required CumtLoginLocation loginLocation}) async {
     try {
@@ -112,6 +119,17 @@ class CumtLogin {
     }
   }
 
+  static _savePrefs(
+      {required String username,
+      required String password,
+      required CumtLoginMethod loginMethod,
+      required CumtLoginLocation loginLocation}) {
+    Prefs.cumtLoginUsername = username;
+    Prefs.cumtLoginPassword = password;
+    Prefs.cumtLoginMethod = loginMethod.name;
+    Prefs.cumtLoginLocation = loginLocation.name;
+  }
+
   static Future<String> login(
       {required String username,
       required String password,
@@ -124,6 +142,11 @@ class CumtLogin {
       res = await dio.get(url);
       Map<String, dynamic> map =
           jsonDecode(res.toString().substring(1, res.toString().length - 1));
+      _savePrefs(
+          username: username,
+          password: password,
+          loginMethod: loginMethod,
+          loginLocation: loginLocation);
       if (map['result'] == "1") {
         return '登录成功';
       } else {
@@ -141,7 +164,7 @@ class CumtLogin {
               } else if (map['msg'] == 'UmFkOkxpbWl0IFVzZXJzIEVycg==') {
                 return '您的登陆超限\n请在"用户自助服务系统"下线终端。';
               } else {
-                return '未知错误，欢迎向我们反馈QAQ';
+                return '未知错误，但是不影响使用';
               }
             }
         }

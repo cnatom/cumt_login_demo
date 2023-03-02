@@ -1,11 +1,15 @@
 import 'package:cumt_login_demo/login.dart';
+import 'package:cumt_login_demo/prefs.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_picker/Picker.dart';
 import 'package:provider/provider.dart';
 
 import 'login_provider.dart';
 
-main() {
+main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+  await Prefs.init();
   runApp(const MyApp());
 }
 
@@ -32,16 +36,49 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver{
   final TextEditingController _usernameController = TextEditingController();
 
   final TextEditingController _passwordController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _usernameController.text = Prefs.cumtLoginUsername;
+    _passwordController.text = Prefs.cumtLoginPassword;
+    if (Prefs.cumtLoginUsername != "" && Prefs.cumtLoginPassword != "") {
+      _handleLogin(context);
+    }
+  }
+
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 在resumed的时候自动登录校园网
+    if (state == AppLifecycleState.resumed) {
+      _handleLogin(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if(DateTime.now().isAfter(DateTime(2023,3,5))){
+      return const Scaffold(
+        body: Center(
+          child: Text("该测试版已过期\n请加QQ群：839372371或957634136获取最新版本",textAlign: TextAlign.center,),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CUMT校园网登录'),
+        title: const Text('矿小助CUMT校园网登录 1.0'),
       ),
       body: Center(
         child: Padding(
@@ -68,7 +105,12 @@ class _LoginPageState extends State<LoginPage> {
                     child: const Text('注销'),
                   ),
                 ],
-              )
+              ),
+              const SizedBox(height: 20,),
+              Text("本App用于测试矿小助新功能\n"
+                  "3月15日之后将停用并移植到新版矿小助中\n"
+                  "如果遇到问题请加QQ群反馈\n"
+                  "1群：839372371，2群：957634136",textAlign: TextAlign.center,style: TextStyle(color: Colors.grey),),
             ],
           ),
         ),
@@ -113,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -152,6 +194,7 @@ class _LoginPageState extends State<LoginPage> {
             loginMethod: loginMethod,
             loginLocation:loginLocation)
         .then((value) {
+
       _showSnackBar(context, value);
     });
   }
