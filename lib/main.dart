@@ -1,13 +1,13 @@
-import 'package:cumt_login_demo/login.dart';
-import 'package:cumt_login_demo/prefs.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_picker/Picker.dart';
-import 'package:provider/provider.dart';
 
-import 'login_provider.dart';
+import 'login_util/account.dart';
+import 'login_util/locations.dart';
+import 'login_util/login.dart';
+import 'login_util/methods.dart';
+import 'login_util/prefs.dart';
 
-main() async{
+main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Prefs.init();
   runApp(const MyApp());
@@ -18,40 +18,34 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (BuildContext context) => LoginPageProvider(),
-      child: MaterialApp(
-        home: LoginPage(),
-      ),
+    return const MaterialApp(
+      home: LoginPage(),
     );
   }
 }
 
-
-
 class LoginPage extends StatefulWidget {
-  LoginPage({Key? key}) : super(key: key);
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver{
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   final TextEditingController _usernameController = TextEditingController();
 
   final TextEditingController _passwordController = TextEditingController();
+
+  CumtLoginAccount cumtLoginAccount = CumtLoginAccount();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _usernameController.text = Prefs.cumtLoginUsername;
-    _passwordController.text = Prefs.cumtLoginPassword;
-    if (Prefs.cumtLoginUsername != "" && Prefs.cumtLoginPassword != "") {
-      _handleLogin(context);
-    }
+    _usernameController.text = cumtLoginAccount.username!;
+    _passwordController.text = cumtLoginAccount.password!;
+    _handleLogin(context);
   }
-
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -69,84 +63,155 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver{
 
   @override
   Widget build(BuildContext context) {
-    if(DateTime.now().isAfter(DateTime(2023,3,5))){
+    /// 3月15日之后将停用并移植到新版本
+    if (DateTime.now().isAfter(DateTime(2023, 3, 25))) {
       return const Scaffold(
         body: Center(
-          child: Text("该测试版已过期\n请加QQ群：839372371或957634136获取最新版本",textAlign: TextAlign.center,),
+          child: Text(
+            "该测试版已过期\n请加QQ群：839372371或957634136获取最新版本",
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('矿小助CUMT校园网登录 1.0'),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 16.0),
-              buildTextField("账号", _usernameController),
-              const SizedBox(height: 16.0),
-              buildTextField("密码", _passwordController, obscureText: true),
-              const SizedBox(height: 16.0),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  buildPicker(),
-
-                  ElevatedButton(
-                    onPressed: () => _handleLogin(context),
-                    child: const Text('登录'),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _handleLogout(context),
-                    child: const Text('注销'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20,),
-              Text("本App用于测试矿小助新功能\n"
-                  "3月15日之后将停用并移植到新版矿小助中\n"
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('矿小助CUMT校园网登录 1.3'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "新功能：\n"
+                      "1.添加了文昌校区接口\n"
+                      "2.多账号功能\n（账号栏右边的小按钮，当成功登录后自动保存）\n"
+                      "自动登录时机：初始化App或从后台调出",
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16.0),
+                buildTextField("账号", _usernameController, showPopButton: true),
+                const SizedBox(height: 16.0),
+                buildTextField("密码", _passwordController, obscureText: true),
+                const SizedBox(height: 16.0),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    TextButton(
+                        onPressed: () => _showLocationMethodPicker(),
+                        child: Row(
+                          children: [
+                            Text("${cumtLoginAccount.cumtLoginLocation?.name} ${cumtLoginAccount.cumtLoginMethod?.name}"),
+                            const Icon(Icons.arrow_drop_down),
+                          ],
+                        )),
+                    ElevatedButton(
+                      onPressed: () => _handleLogin(context),
+                      child: const Text('登录'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => _handleLogout(context),
+                      child: const Text('注销'),
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 20,
+                ),
+                const Text(
+                  "本App用于测试矿小助新功能\n"
+                  "3月25日之后将停用\n"
                   "如果遇到问题请加QQ群反馈\n"
-                  "1群：839372371，2群：957634136",textAlign: TextAlign.center,style: TextStyle(color: Colors.grey),),
-            ],
+                  "1群：839372371，2群：957634136",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-  Widget buildPicker(){
-    return TextButton(onPressed: ()=> _showLocationMethodPicker(), child: Row(
-      children: [
-        Consumer<LoginPageProvider>(
-          builder: (context, provider, child) {
-            return Text(
-                "${provider.loginLocation.name} ${provider.loginMethod.name}");
-          },
-        ),
-        const Icon(Icons.arrow_drop_down),
-      ],
-    ));
+  void _showLocationMethodPicker() {
+    Picker(
+        adapter: PickerDataAdapter<dynamic>(pickerData: [
+          CumtLoginLocationExtension.nameList,
+          CumtLoginMethodExtension.nameList,
+        ], isArray: true),
+        changeToFirst: true,
+        hideHeader: false,
+        onConfirm: (Picker picker, List value) {
+          setState(() {
+            cumtLoginAccount.setCumtLoginLocationByName(picker.getSelectedValues()[0]);
+            cumtLoginAccount.setCumtLoginMethodByName(picker.getSelectedValues()[1]);
+          });
+        }).showModal(context);
   }
 
-  TextField buildTextField(
+  Widget buildTextField(
       String labelText, TextEditingController textEditingController,
-      {obscureText = false}) {
-    return TextField(
-      controller: textEditingController,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        labelText: labelText,
-        border: const OutlineInputBorder(),
+      {obscureText = false, showPopButton = false}) {
+    return SizedBox(
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.centerRight,
+        children: [
+          TextField(
+            controller: textEditingController,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              labelText: labelText,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          showPopButton
+              ? PopupMenuButton<CumtLoginAccount>(
+              icon: const Icon(Icons.arrow_drop_down_outlined),
+              onOpened: () {
+                FocusScope.of(context).unfocus();
+              },
+              onSelected: (account) {
+                setState(() {
+                  cumtLoginAccount = account.clone();
+                  _usernameController.text = cumtLoginAccount.username!;
+                  _passwordController.text = cumtLoginAccount.password!;
+                });
+              },
+              itemBuilder: (context)  {
+                return CumtLoginAccount.list.map((account) {
+                  return PopupMenuItem<CumtLoginAccount>(
+                    value: account,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(child: Text("${account.username}"
+                            " ${account.cumtLoginLocation?.name} ${account.cumtLoginMethod?.name}",),),
+                        IconButton(onPressed: (){
+                          CumtLoginAccount.removeList(account.clone());
+                          _showSnackBar(context, "删除成功");
+                          Navigator.of(context).pop();
+                          setState(() {});
+                        }, icon: const Icon(Icons.close))
+
+                      ],
+                    ),
+                  );
+                }).toList();
+              }
+          )
+              : Container(),
+        ],
       ),
     );
   }
 
   void _handleLogout(BuildContext context) {
-    final loginLocation = Provider.of<LoginPageProvider>(context, listen: false).loginLocation;
-    CumtLogin.logout(loginLocation: loginLocation).then((value) {
+    CumtLogin.logout(account: cumtLoginAccount).then((value) {
       _showSnackBar(context, value);
     });
   }
@@ -160,42 +225,19 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver{
     );
   }
 
-  void _showLocationMethodPicker(){
-    Picker(
-        adapter: PickerDataAdapter<dynamic>(pickerData: [
-          CumtLoginLocationExtension.nameList,
-          CumtLoginMethodExtension.nameList,
-        ], isArray: true),
-        changeToFirst: true,
-        hideHeader: false,
-        onConfirm: (Picker picker, List value) {
-          final loginMethod = CumtLoginMethodExtension
-              .fromName(picker.getSelectedValues()[1]);
-          final loginLocation = CumtLoginLocationExtension.fromName(
-              picker.getSelectedValues()[0]);
-          Provider.of<LoginPageProvider>(context, listen: false)
-              .setMethodLocation(loginMethod, loginLocation);
-        }).showModal(context);
-  }
-
   void _handleLogin(BuildContext context) {
-    final String username = _usernameController.text.trim();
-    final String password = _passwordController.text.trim();
-    final loginLocation = Provider.of<LoginPageProvider>(context, listen: false).loginLocation;
-    final loginMethod = Provider.of<LoginPageProvider>(context, listen: false).loginMethod;
-    if (username.isEmpty || password.isEmpty) {
+    if (_usernameController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
       _showSnackBar(context, '账号或密码不能为空');
       return;
     }
+    cumtLoginAccount.username = _usernameController.text.trim();
+    cumtLoginAccount.password = _passwordController.text.trim();
 
-    CumtLogin.login(
-            username: username,
-            password: password,
-            loginMethod: loginMethod,
-            loginLocation:loginLocation)
-        .then((value) {
-
-      _showSnackBar(context, value);
+    CumtLogin.login(account: cumtLoginAccount).then((value) {
+      setState(() {
+        _showSnackBar(context, value);
+      });
     });
   }
 }
