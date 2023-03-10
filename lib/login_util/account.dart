@@ -52,7 +52,8 @@ class CumtLoginAccount{
     Prefs.cumtLoginAccountList = jsonEncode(list);
   }
 
-  static removeList(CumtLoginAccount value){
+  static removeList(CumtLoginAccount valueOld){
+    CumtLoginAccount value = valueOld.clone();
     if(list.remove(value)){
       Prefs.cumtLoginAccountList = jsonEncode(list);
     }

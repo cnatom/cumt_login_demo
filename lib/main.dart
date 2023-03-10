@@ -63,7 +63,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    /// 3月15日之后将停用并移植到新版本
+    /// 停用并移植到新版本
     if (DateTime.now().isAfter(DateTime(2023, 3, 25))) {
       return const Scaffold(
         body: Center(
@@ -192,10 +192,9 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                         Expanded(child: Text("${account.username}"
                             " ${account.cumtLoginLocation?.name} ${account.cumtLoginMethod?.name}",),),
                         IconButton(onPressed: (){
-                          CumtLoginAccount.removeList(account.clone());
+                          CumtLoginAccount.removeList(account);
                           _showSnackBar(context, "删除成功");
                           Navigator.of(context).pop();
-                          setState(() {});
                         }, icon: const Icon(Icons.close))
 
                       ],
